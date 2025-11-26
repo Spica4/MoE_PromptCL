@@ -132,6 +132,9 @@ def evaluate(
     """
     model.eval()
 
+    # Convert roi_size to tuple if necessary (for MONAI functions)
+    roi_size = tuple(args.roi_size) if isinstance(args.roi_size, list) else args.roi_size
+
     # Initialize MONAI metrics
     dice_metric = DiceMetric(
         include_background=False,
@@ -159,7 +162,7 @@ def evaluate(
             # Use sliding window inference for large 3D volumes
             outputs = sliding_window_inference(
                 inputs,
-                roi_size=args.roi_size,
+                roi_size=roi_size,
                 sw_batch_size=4,
                 predictor=lambda x: model(x, task_id=task_id, train=False)[0],
                 overlap=0.5,

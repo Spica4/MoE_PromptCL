@@ -354,8 +354,11 @@ def create_swin_unetr_model(args):
     Returns:
         SwinUNETRWithPrompt model
     """
+    # Convert list to tuple if necessary (argparse returns lists for nargs)
+    img_size = tuple(args.img_size) if isinstance(args.img_size, list) else args.img_size
+
     model = SwinUNETRWithPrompt(
-        img_size=args.img_size,
+        img_size=img_size,
         in_channels=args.in_channels,
         out_channels=args.out_channels,
         feature_size=args.feature_size,

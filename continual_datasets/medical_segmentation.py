@@ -44,7 +44,8 @@ class MedicalSegmentationDataset(Dataset):
         self.mode = mode
         self.task_id = task_id
         self.organ_list = organ_list
-        self.roi_size = roi_size
+        # Convert to tuple if necessary (for MONAI transforms)
+        self.roi_size = tuple(roi_size) if isinstance(roi_size, list) else roi_size
         self.cache_rate = cache_rate
 
         # Load data list

@@ -8,7 +8,7 @@ def get_args_parser(subparsers):
     # Swin UNETR Model parameters
     subparsers.add_argument('--model', default='swin_unetr', type=str, metavar='MODEL',
                             help='Name of model to train')
-    subparsers.add_argument('--img_size', default=(96, 96, 96), type=tuple,
+    subparsers.add_argument('--img_size', default=[96, 96, 96], type=int, nargs=3,
                             help='Input image size (D, H, W) for 3D')
     subparsers.add_argument('--in_channels', default=1, type=int,
                             help='Number of input channels (1 for CT/MRI)')
@@ -70,7 +70,7 @@ def get_args_parser(subparsers):
                             help='scaling lr by batch size (default: True)')
 
     # Data augmentation parameters for 3D medical images
-    subparsers.add_argument('--roi_size', default=(96, 96, 96), type=tuple,
+    subparsers.add_argument('--roi_size', default=[96, 96, 96], type=int, nargs=3,
                             help='ROI size for random crop')
     subparsers.add_argument('--use_smart_cache', default=False, type=bool,
                             help='Use MONAI SmartCache for efficient data loading')
@@ -138,7 +138,7 @@ def get_args_parser(subparsers):
                                 11: 'pancreas',
                                 12: 'right_adrenal',
                                 13: 'left_adrenal'
-                            }, type=dict, help='Organ label mapping')
+                            }, help='Organ label mapping (not meant to be passed from command line)')
 
     # NoRGa Prompt parameters for 3D
     subparsers.add_argument('--use_e_prompt', default=True, type=bool,
@@ -171,7 +171,7 @@ def get_args_parser(subparsers):
     subparsers.add_argument('--pull_constraint_coeff', default=0.5, type=float)
 
     # Freeze parameters
-    subparsers.add_argument('--freeze', default=['encoder'], nargs='*', type=list,
+    subparsers.add_argument('--freeze', default=['encoder'], nargs='*', type=str,
                             help='freeze part in backbone model')
 
     # Task inference parameters
@@ -195,7 +195,7 @@ def get_args_parser(subparsers):
 
     # Evaluation metrics for segmentation
     subparsers.add_argument('--eval_metrics', default=['dice', 'hausdorff', 'iou'],
-                            nargs='+', type=list,
+                            nargs='+', type=str,
                             help='Metrics to compute during evaluation')
     subparsers.add_argument('--save_predictions', default=False, type=bool,
                             help='Save prediction masks during evaluation')

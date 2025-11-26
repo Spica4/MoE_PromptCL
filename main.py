@@ -105,6 +105,10 @@ def main(args):
             print('Using NoRGa-prompt')
             import trainers.norgaprompt_tii_trainer as tii_trainer
         tii_trainer.train(args)
+    elif 'swin_unetr' in args.config:
+        print('Using Swin UNETR for 3D Medical Segmentation')
+        import trainers.swin_unetr_trainer as swin_unetr_trainer
+        swin_unetr_trainer.train(args)
     elif 'hideprompt' in args.config and not args.train_inference_task_only:
         print('Using HiDe-Prompt')
         import trainers.hideprompt_trainer as hideprompt_trainer
@@ -116,10 +120,6 @@ def main(args):
     elif 'l2p' in args.config or 'dualprompt' in args.config or 'sprompt' in args.config:
         import trainers.dp_trainer as dp_trainer
         dp_trainer.train(args)
-    elif 'swin_unetr' in args.config:
-        print('Using Swin UNETR for 3D Medical Segmentation')
-        import trainers.swin_unetr_trainer as swin_unetr_trainer
-        swin_unetr_trainer.train(args)
     else:
         raise NotImplementedError
 

@@ -28,10 +28,12 @@ def get_args_parser(subparsers):
                             help='Spatial dimensions (3 for 3D)')
 
     # Pretrained weights
-    subparsers.add_argument('--pretrained', default=False, type=bool,
+    subparsers.add_argument('--pretrained', default=True, type=bool,
                             help='Load pretrained Swin UNETR weights')
-    subparsers.add_argument('--pretrained_path', default='', type=str,
-                            help='Path to pretrained weights')
+    subparsers.add_argument('--pretrained_path',
+                            default='./checkpoints/swin_unetr/model_swinvit.pt',
+                            type=str,
+                            help='Path to pretrained weights (MONAI self-supervised or BTCV)')
 
     # Optimizer parameters
     subparsers.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',

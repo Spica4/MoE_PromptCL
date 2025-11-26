@@ -381,9 +381,46 @@ def create_swin_unetr_model(args):
 
     # Load pretrained weights if specified
     if args.pretrained and args.pretrained_path:
-        _logger.info(f"Loading pretrained weights from {args.pretrained_path}")
-        checkpoint = torch.load(args.pretrained_path, map_location='cpu')
-        model.swin_unetr.load_state_dict(checkpoint, strict=False)
+        import os
+        if os.path.exists(args.pretrained_path):
+            _logger.info(f"Loading pretrained weights from {args.pretrained_path}")
+            checkpoint = torch.load(args.pretrained_path, map_location='cpu')
+
+            # Handle different checkpoint formats
+            if 'state_dict' in checkpoint:
+                # MONAI format with 'state_dict' key
+                state_dict = checkpoint['state_dict']
+            elif 'model' in checkpoint:
+                # Alternative format with 'model' key
+                state_dict = checkpoint['model']
+            else:
+                # Direct state dict
+                state_dict = checkpoint
+
+            # Remove 'module.' prefix if present (from DataParallel)
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k.replace('module.', '').replace('swinViT.', '')
+                new_state_dict[name] = v
+
+            # Load with strict=False to allow partial loading
+            # (useful when adding prompt parameters)
+            missing_keys, unexpected_keys = model.swin_unetr.load_state_dict(
+                new_state_dict, strict=False
+            )
+
+            if missing_keys:
+                _logger.info(f"Missing keys in checkpoint: {len(missing_keys)}")
+                _logger.debug(f"Missing keys: {missing_keys[:5]}...")  # Show first 5
+            if unexpected_keys:
+                _logger.info(f"Unexpected keys in checkpoint: {len(unexpected_keys)}")
+                _logger.debug(f"Unexpected keys: {unexpected_keys[:5]}...")
+
+            _logger.info("Pretrained weights loaded successfully")
+        else:
+            _logger.warning(f"Pretrained weights not found at {args.pretrained_path}")
+            _logger.warning("Training from scratch...")
 
     return model
 

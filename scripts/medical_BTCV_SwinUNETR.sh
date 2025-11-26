@@ -68,6 +68,8 @@ python main.py swin_unetr_norgaprompt \
     --lr ${LR} \
     --seed ${SEED} \
     --num_tasks ${NUM_TASKS} \
+    --pretrained True \
+    --pretrained_path ./checkpoints/swin_unetr/model_swinvit.pt \
     --img_size 96 96 96 \
     --in_channels 1 \
     --out_channels 14 \

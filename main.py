@@ -74,6 +74,9 @@ def get_args():
     elif config == 'cub_l2p':
         from configs.cub_l2p import get_args_parser
         config_parser = subparser.add_parser('cub_l2p', help='Split-CUB l2p configs')
+    elif config == 'swin_unetr_norgaprompt':
+        from configs.swin_unetr_norgaprompt import get_args_parser
+        config_parser = subparser.add_parser('swin_unetr_norgaprompt', help='3D Medical Segmentation Swin UNETR NoRGa-prompt configs')
     else:
         raise NotImplementedError
 
@@ -113,6 +116,10 @@ def main(args):
     elif 'l2p' in args.config or 'dualprompt' in args.config or 'sprompt' in args.config:
         import trainers.dp_trainer as dp_trainer
         dp_trainer.train(args)
+    elif 'swin_unetr' in args.config:
+        print('Using Swin UNETR for 3D Medical Segmentation')
+        import trainers.swin_unetr_trainer as swin_unetr_trainer
+        swin_unetr_trainer.train(args)
     else:
         raise NotImplementedError
 

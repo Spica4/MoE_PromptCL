@@ -171,8 +171,8 @@ def get_args_parser(subparsers):
     subparsers.add_argument('--pull_constraint_coeff', default=0.5, type=float)
 
     # Freeze parameters
-    subparsers.add_argument('--freeze', default=['encoder'], nargs='*', type=str,
-                            help='freeze part in backbone model')
+    subparsers.add_argument('--freeze', default=[], nargs='*', type=str,
+                            help='freeze part in backbone model (default: [] - train all parameters)')
 
     # Task inference parameters
     subparsers.add_argument('--train_inference_task_only', action='store_true',

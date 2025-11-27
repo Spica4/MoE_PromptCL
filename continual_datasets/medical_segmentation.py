@@ -164,6 +164,9 @@ class MedicalSegmentationDataset(Dataset):
         # Apply transforms
         if self.transform is not None:
             data = self.transform(data)
+            # Handle case where transform returns a list (e.g., RandCropByPosNegLabeld)
+            if isinstance(data, list):
+                data = data[0]
 
         # Filter labels for current task if specified
         if self.task_id is not None and self.organ_list is not None:

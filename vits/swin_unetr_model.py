@@ -94,6 +94,7 @@ class SwinUNETRWithPrompt(nn.Module):
         self.prompt_pool_size = prompt_pool_size
         self.top_k = top_k
         self.batchwise_prompt = batchwise_prompt
+        self.prompt_key_init = prompt_key_init
         self.embedding_key = embedding_key
         self.pull_constraint = pull_constraint
         self.pull_constraint_coeff = pull_constraint_coeff

@@ -79,10 +79,24 @@ class MedicalSegmentationDataset(Dataset):
             label_name = img_path.name.replace('img', 'label')
             label_path = label_dir / label_name
 
-            if label_path.exists() or self.mode == 'test':
+            # Skip if files are empty or corrupted
+            if img_path.stat().st_size == 0:
+                print(f"Warning: Skipping empty image file: {img_path}")
+                continue
+
+            if label_path.exists():
+                if label_path.stat().st_size == 0:
+                    print(f"Warning: Skipping empty label file: {label_path}")
+                    continue
                 data_dict = {
                     'image': str(img_path),
-                    'label': str(label_path) if label_path.exists() else None,
+                    'label': str(label_path),
+                }
+                data_list.append(data_dict)
+            elif self.mode == 'test':
+                data_dict = {
+                    'image': str(img_path),
+                    'label': None,
                 }
                 data_list.append(data_dict)
 

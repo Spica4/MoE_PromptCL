@@ -75,7 +75,9 @@ class MedicalSegmentationDataset(Dataset):
             raise ValueError(f"Image directory {img_dir} does not exist")
 
         for img_path in sorted(img_dir.glob('*.nii.gz')):
-            label_path = label_dir / img_path.name
+            # Handle different naming conventions (e.g., img0001.nii.gz -> label0001.nii.gz)
+            label_name = img_path.name.replace('img', 'label')
+            label_path = label_dir / label_name
 
             if label_path.exists() or self.mode == 'test':
                 data_dict = {

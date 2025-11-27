@@ -204,10 +204,8 @@ def evaluate(
         'hausdorff': mean_hausdorff,
     }
 
-    # Compute per-class metrics if organ list is provided
-    if organ_list is not None:
-        for organ_id in organ_list:
-            results[f'dice_organ_{organ_id}'] = dice_scores[organ_id - 1].item() if organ_id > 0 else 0.0
+    # Note: Individual organ scores are not available with reduction="mean"
+    # If per-organ metrics are needed, change DiceMetric reduction to "mean_batch"
 
     return results
 

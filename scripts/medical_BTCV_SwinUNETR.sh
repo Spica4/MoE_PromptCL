@@ -9,7 +9,7 @@ OUTPUT_DIR="./output/swin_unetr_btcv"
 BATCH_SIZE=2
 EPOCHS=100
 LR=1e-4
-NUM_TASKS=5
+NUM_TASKS=4
 SEED=42
 
 # Parse command line arguments (optional)

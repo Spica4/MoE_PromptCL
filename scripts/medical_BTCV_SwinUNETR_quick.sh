@@ -14,7 +14,7 @@ python main.py swin_unetr_norgaprompt \
     --epochs 5 \
     --lr 1e-4 \
     --seed 42 \
-    --num_tasks 3 \
+    --num_tasks 4 \
     --img_size 96 96 96 \
     --in_channels 1 \
     --out_channels 14 \

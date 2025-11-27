@@ -21,6 +21,8 @@ from engines.swin_unetr_engine import (
     evaluate,
     evaluate_till_now,
     create_segmentation_loss,
+    inference_and_save,
+    evaluate_test_predictions,
 )
 import utils
 
@@ -260,6 +262,64 @@ def train(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f"\nTotal training time: {total_time_str}")
+
+    # After training all tasks, perform test inference
+    print("\n" + "=" * 80)
+    print("Test Inference Phase")
+    print("=" * 80 + "\n")
+
+    # Load best model
+    best_checkpoint_path = os.path.join(args.output_dir, 'checkpoint', 'best_checkpoint.pth')
+    if os.path.exists(best_checkpoint_path):
+        print(f'Loading best model from: {best_checkpoint_path}')
+        checkpoint = torch.load(best_checkpoint_path, map_location=device)
+        model_without_ddp.load_state_dict(checkpoint['model'])
+    else:
+        print('Warning: Best checkpoint not found, using final model')
+
+    # Create test data loader (mode='test' uses imagesTs)
+    test_loader = build_continual_medical_dataloader(
+        dataset_name=args.dataset,
+        data_dir=args.data_path,
+        batch_size=1,
+        num_workers=args.num_workers,
+        task_id=None,  # No task filtering for test
+        organ_list=None,
+        mode='test',
+        roi_size=args.roi_size,
+        cache_rate=0.0,
+    )
+
+    # Save predictions to disk
+    pred_save_dir = os.path.join(args.output_dir, 'test_predictions')
+    saved_files = inference_and_save(
+        model=model_without_ddp,
+        data_loader=test_loader,
+        device=device,
+        save_dir=pred_save_dir,
+        task_id=args.num_tasks - 1,  # Use final task ID
+        args=args,
+    )
+
+    print(f"\nTest predictions saved to: {pred_save_dir}")
+
+    # Evaluate test predictions against ground truth
+    print("\n" + "=" * 80)
+    print("Test Evaluation Phase")
+    print("=" * 80 + "\n")
+
+    label_dir = os.path.join(args.data_path, 'labelsTs')
+    excel_save_path = os.path.join(args.output_dir, 'test_results.xlsx')
+
+    test_results = evaluate_test_predictions(
+        pred_dir=pred_save_dir,
+        label_dir=label_dir,
+        out_channels=args.out_channels,
+        save_excel=excel_save_path,
+    )
+
+    print(f"\nTest evaluation complete!")
+    print(f"Results saved to: {excel_save_path}")
 
 
 def evaluate_all_tasks(model, data_loaders, device, organ_lists, args):

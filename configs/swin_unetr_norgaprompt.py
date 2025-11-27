@@ -119,8 +119,8 @@ def get_args_parser(subparsers):
     subparsers.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
 
     # Continual learning parameters for medical segmentation
-    subparsers.add_argument('--num_tasks', default=5, type=int,
-                            help='number of sequential tasks (e.g., different organs)')
+    subparsers.add_argument('--num_tasks', default=4, type=int,
+                            help='number of sequential tasks (each task = one organ)')
     subparsers.add_argument('--task_inc', default=True, type=bool,
                             help='task incremental learning for multi-organ segmentation')
     subparsers.add_argument('--organ_mapping', default={

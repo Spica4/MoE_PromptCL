@@ -68,8 +68,15 @@ class MedicalSegmentationDataset(Dataset):
         data_list = []
 
         # Example structure for BTCV dataset
-        img_dir = self.data_dir / 'imagesTr' if self.mode == 'train' else self.data_dir / 'imagesTs'
-        label_dir = self.data_dir / 'labelsTr' if self.mode == 'train' else self.data_dir / 'labelsTs'
+        if self.mode == 'train':
+            img_dir = self.data_dir / 'imagesTr'
+            label_dir = self.data_dir / 'labelsTr'
+        elif self.mode == 'val':
+            img_dir = self.data_dir / 'imagesVa'
+            label_dir = self.data_dir / 'labelsVa'
+        else:  # test
+            img_dir = self.data_dir / 'imagesTs'
+            label_dir = self.data_dir / 'labelsTs'
 
         if not img_dir.exists():
             raise ValueError(f"Image directory {img_dir} does not exist")
@@ -334,30 +341,27 @@ def build_continual_medical_dataloader(
     return dataloader
 
 
-def create_task_split_for_organs(num_tasks=5, total_organs=13):
+def create_task_split_for_organs(num_tasks=4, total_organs=13):
     """
     Create task splits for continual learning on multi-organ segmentation
+    Each task is assigned one organ (Task i -> Organ i+1)
 
     Args:
         num_tasks: Number of tasks to split into
         total_organs: Total number of organ classes (excluding background)
 
     Returns:
-        List of organ lists for each task
+        List of organ lists for each task (each list contains one organ ID)
     """
-    organs = list(range(1, total_organs + 1))  # 1 to total_organs
-    organs_per_task = len(organs) // num_tasks
-
     task_splits = []
     for i in range(num_tasks):
-        start_idx = i * organs_per_task
-        if i == num_tasks - 1:
-            # Last task gets remaining organs
-            end_idx = len(organs)
+        # Each task gets one organ: Task 0 -> Organ 1, Task 1 -> Organ 2, etc.
+        organ_id = i + 1
+        if organ_id <= total_organs:
+            task_splits.append([organ_id])
         else:
-            end_idx = (i + 1) * organs_per_task
-
-        task_splits.append(organs[start_idx:end_idx])
+            # If num_tasks > total_organs, wrap around or stop
+            task_splits.append([])
 
     return task_splits
 

@@ -344,6 +344,183 @@ def create_segmentation_loss(args):
     return criterion
 
 
+@torch.no_grad()
+def inference_and_save(
+    model: nn.Module,
+    data_loader: Iterable,
+    device: torch.device,
+    save_dir: str,
+    task_id=-1,
+    args=None,
+):
+    """
+    Perform inference on test data and save predictions as .nii.gz files
+
+    Args:
+        model: Swin UNETR model
+        data_loader: Test data loader
+        device: Device
+        save_dir: Directory to save predictions
+        task_id: Current task ID
+        args: Additional arguments
+
+    Returns:
+        List of saved file paths
+    """
+    import nibabel as nib
+    from pathlib import Path
+
+    model.eval()
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert roi_size to tuple if necessary (for MONAI functions)
+    roi_size = tuple(args.roi_size) if isinstance(args.roi_size, list) else args.roi_size
+
+    saved_files = []
+
+    print(f"Starting inference for Task {task_id}...")
+    for idx, batch_data in enumerate(data_loader):
+        inputs = batch_data['image'].to(device)
+
+        # Get original image path for naming
+        if 'image_meta_dict' in batch_data and 'filename_or_obj' in batch_data['image_meta_dict']:
+            orig_path = batch_data['image_meta_dict']['filename_or_obj'][0]
+            filename = Path(orig_path).stem.replace('.nii', '')  # Remove .nii from .nii.gz
+        else:
+            filename = f"pred_{idx:04d}"
+
+        # Use sliding window inference for large 3D volumes
+        outputs = sliding_window_inference(
+            inputs,
+            roi_size=roi_size,
+            sw_batch_size=4,
+            predictor=lambda x: model(x, task_id=task_id, train=False)[0],
+            overlap=0.5,
+        )
+
+        # Get predictions (argmax over channel dimension)
+        preds = torch.argmax(outputs, dim=1, keepdim=True)  # (B, 1, D, H, W)
+
+        # Save each prediction in the batch
+        for b in range(preds.shape[0]):
+            pred_np = preds[b, 0].cpu().numpy().astype(np.uint8)  # (D, H, W)
+
+            # Create NIfTI image
+            nii_img = nib.Nifti1Image(pred_np, affine=np.eye(4))
+
+            # Save file
+            save_path = save_dir / f"{filename}_task{task_id}.nii.gz"
+            nib.save(nii_img, str(save_path))
+            saved_files.append(str(save_path))
+
+            if idx % 10 == 0:
+                print(f"Saved prediction: {save_path}")
+
+    print(f"Inference complete. Saved {len(saved_files)} predictions to {save_dir}")
+    return saved_files
+
+
+@torch.no_grad()
+def evaluate_test_predictions(
+    pred_dir: str,
+    label_dir: str,
+    out_channels: int,
+    save_excel: str = None,
+):
+    """
+    Evaluate test predictions against ground truth labels and save to Excel
+
+    Args:
+        pred_dir: Directory containing prediction .nii.gz files
+        label_dir: Directory containing ground truth .nii.gz files
+        out_channels: Number of output channels (classes)
+        save_excel: Path to save Excel file with results
+
+    Returns:
+        Dictionary of evaluation metrics
+    """
+    import nibabel as nib
+    from pathlib import Path
+    import pandas as pd
+
+    pred_dir = Path(pred_dir)
+    label_dir = Path(label_dir)
+
+    # Initialize MONAI metrics
+    dice_metric = DiceMetric(
+        include_background=False,
+        reduction="mean_batch",  # Keep per-class scores
+        get_not_nans=False
+    )
+
+    results_list = []
+
+    print(f"Evaluating predictions in {pred_dir} against labels in {label_dir}...")
+
+    for pred_path in sorted(pred_dir.glob('*.nii.gz')):
+        # Find corresponding label file
+        # Assuming prediction is named like "img0001_task0.nii.gz"
+        # and label is "label0001.nii.gz"
+        base_name = pred_path.stem.replace('.nii', '')  # Remove .nii from .nii.gz
+        # Extract original image name (remove _taskX suffix)
+        orig_name = '_'.join(base_name.split('_')[:-1]) if '_task' in base_name else base_name
+        label_name = orig_name.replace('img', 'label') + '.nii.gz'
+        label_path = label_dir / label_name
+
+        if not label_path.exists():
+            print(f"Warning: Label not found for {pred_path.name}, skipping...")
+            continue
+
+        # Load prediction and label
+        pred_nii = nib.load(pred_path)
+        label_nii = nib.load(label_path)
+
+        pred_np = pred_nii.get_fdata()
+        label_np = label_nii.get_fdata()
+
+        # Convert to torch tensors
+        pred_tensor = torch.from_numpy(pred_np).long().unsqueeze(0).unsqueeze(0)  # (1, 1, D, H, W)
+        label_tensor = torch.from_numpy(label_np).long().unsqueeze(0).unsqueeze(0)  # (1, 1, D, H, W)
+
+        # Convert prediction to one-hot
+        pred_onehot = F.one_hot(pred_tensor.squeeze(1), num_classes=out_channels)  # (1, D, H, W, C)
+        pred_onehot = pred_onehot.permute(0, 4, 1, 2, 3).float()  # (1, C, D, H, W)
+
+        # Compute Dice score
+        dice_metric(y_pred=pred_onehot, y=label_tensor)
+
+    # Aggregate metrics
+    dice_scores = dice_metric.aggregate()  # (C-1,) tensor, excluding background
+    mean_dice = dice_scores.mean().item()
+
+    print(f"Mean Dice Score: {mean_dice:.4f}")
+    print(f"Per-class Dice Scores:")
+    for i, score in enumerate(dice_scores):
+        print(f"  Class {i+1}: {score.item():.4f}")
+
+    # Create results dictionary
+    results = {
+        'mean_dice': mean_dice,
+    }
+
+    # Add per-class scores
+    for i, score in enumerate(dice_scores):
+        results[f'dice_class_{i+1}'] = score.item()
+
+    # Save to Excel if path provided
+    if save_excel:
+        df_data = {
+            'Metric': ['Mean Dice'] + [f'Dice Class {i+1}' for i in range(len(dice_scores))],
+            'Score': [mean_dice] + [score.item() for score in dice_scores]
+        }
+        df = pd.DataFrame(df_data)
+        df.to_excel(save_excel, index=False)
+        print(f"Results saved to {save_excel}")
+
+    return results
+
+
 if __name__ == "__main__":
     # Test loss creation
     import argparse

@@ -118,7 +118,7 @@ class MedicalSegmentationDataset(Dataset):
                     spatial_size=self.roi_size,
                     pos=1,
                     neg=1,
-                    num_samples=4,
+                    num_samples=1,
                     image_key="image",
                     image_threshold=0,
                 ),

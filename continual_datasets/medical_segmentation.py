@@ -134,11 +134,16 @@ class MedicalSegmentationDataset(Dataset):
             orig_labels, target_labels = generate_fixed_label_for_continual_learning(
                 task_organ_ids=self.organ_list,
                 total_organs=15,  # AMOS22は15臓器
-                is_multi_label=True
+                is_multi_label=True,
+                only_new_organ=True  # 各タスクで新しい臓器のみラベル付け
             )
-            if self.task_id == 0:  # 最初のタスクのみ表示
+            # 各タスクのラベルマッピングを表示（trainモードのみ）
+            if self.mode == 'train':
                 print(f"\nTask {self.task_id} Label Mapping:")
-                print_label_mapping(orig_labels, target_labels)
+                print(f"  Organ list: {self.organ_list}")
+                print(f"  New organ: {self.organ_list[-1] if self.organ_list else None}")
+                print(f"  Original labels: {orig_labels}")
+                print(f"  Target labels:   {target_labels}")
 
             transform_list.append(
                 transforms.MapLabelValued(

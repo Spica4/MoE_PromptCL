@@ -10,13 +10,8 @@ def get_args_parser(subparsers):
     Get argument parser for Swin UNETR configuration
 
     Args:
-        subparsers: Subparsers from main argument parser
-
-    Returns:
-        Argument parser
+        subparsers: Parser object from main argument parser
     """
-    subparsers = subparsers.add_parser('swin_unetr', help='Swin UNETR for 3D medical segmentation')
-
     # Dataset parameters
     subparsers.add_argument('--dataset', default='BTCV', type=str,
                             help='Dataset name')
@@ -104,5 +99,3 @@ def get_args_parser(subparsers):
                             help='Number of distributed processes')
     subparsers.add_argument('--dist_url', default='env://',
                             help='URL used to set up distributed training')
-
-    return subparsers

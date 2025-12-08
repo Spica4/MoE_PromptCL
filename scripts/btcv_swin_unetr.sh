@@ -1,13 +1,13 @@
 #!/bin/bash
-# Training script for Swin UNETR on BTCV dataset
+# Training script for Swin UNETR on AMOS22 dataset
 # 4-task continual learning for organ segmentation
 
 for seed in 42 40 44
 do
 python main.py swin_unetr \
---dataset BTCV \
---data-path ./local_datasets/medical/BTCV \
---output_dir ./output/swin_unetr_btcv_4tasks_seed$seed \
+--dataset AMOS22 \
+--data-path /deeparea/sokabe/Dataset/amos22/only_CT \
+--output_dir ./output/swin_unetr_amos22_4tasks_seed$seed \
 --num_tasks 4 \
 --batch-size 2 \
 --epochs 100 \

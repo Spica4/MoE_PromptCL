@@ -1,11 +1,11 @@
 #!/bin/bash
-# Quick test script for Swin UNETR on BTCV dataset
+# Quick test script for Swin UNETR on AMOS22 dataset
 # Single seed, fewer epochs for testing
 
 python main.py swin_unetr \
---dataset BTCV \
---data-path ./local_datasets/medical/BTCV \
---output_dir ./output/swin_unetr_btcv_test \
+--dataset AMOS22 \
+--data-path /deeparea/sokabe/Dataset/amos22/only_CT \
+--output_dir ./output/swin_unetr_amos22_test \
 --num_tasks 4 \
 --batch-size 1 \
 --epochs 10 \

@@ -25,8 +25,8 @@ def get_args_parser(subparsers):
                             help='Input image size (D H W)')
     subparsers.add_argument('--in_channels', default=1, type=int,
                             help='Number of input channels (1 for CT/MRI)')
-    subparsers.add_argument('--out_channels', default=14, type=int,
-                            help='Number of output classes (including background)')
+    subparsers.add_argument('--out_channels', default=16, type=int,
+                            help='Number of output classes (15 organs + background for AMOS22)')
     subparsers.add_argument('--feature_size', default=48, type=int,
                             help='Feature size for Swin transformer')
     subparsers.add_argument('--roi_size', default=[96, 96, 96], type=int, nargs=3,

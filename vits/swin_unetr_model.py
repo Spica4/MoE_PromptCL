@@ -19,7 +19,7 @@ class SwinUNETRWrapper(nn.Module):
         self,
         img_size=(96, 96, 96),
         in_channels=1,
-        out_channels=14,
+        out_channels=16,
         feature_size=48,
         drop_rate=0.0,
         attn_drop_rate=0.0,

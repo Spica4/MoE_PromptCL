@@ -14,7 +14,7 @@ python predict_batch.py \
 --img_size 96 96 96 \
 --roi_size 96 96 96 \
 --in_channels 1 \
---out_channels 14 \
+--out_channels 16 \
 --feature_size 48 \
 --sw_batch_size 4 \
 --overlap 0.5 \

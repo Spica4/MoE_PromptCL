@@ -18,7 +18,7 @@ python main.py swin_unetr \
 --img_size 96 96 96 \
 --roi_size 96 96 96 \
 --in_channels 1 \
---out_channels 14 \
+--out_channels 16 \
 --feature_size 48 \
 --loss_type dice_ce \
 --num_workers 2 \

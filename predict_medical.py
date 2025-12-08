@@ -120,8 +120,8 @@ def main():
                         help='Input image size (D H W)')
     parser.add_argument('--in_channels', default=1, type=int,
                         help='Number of input channels')
-    parser.add_argument('--out_channels', default=14, type=int,
-                        help='Number of output classes')
+    parser.add_argument('--out_channels', default=16, type=int,
+                        help='Number of output classes (15 organs + background for AMOS22)')
     parser.add_argument('--feature_size', default=48, type=int,
                         help='Feature size for Swin transformer')
 

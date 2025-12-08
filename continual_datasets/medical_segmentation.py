@@ -9,6 +9,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from monai import transforms
 from pathlib import Path
+import sys
+sys.path.append('..')
+from utils.amos_mapping import generate_fixed_label_for_continual_learning, print_label_mapping
 
 
 class MedicalSegmentationDataset(Dataset):
@@ -104,26 +107,50 @@ class MedicalSegmentationDataset(Dataset):
 
     def _get_default_transforms(self):
         """Get default MONAI transforms for 3D medical images"""
+
+        # ラベルマッピングの準備（organ_listが指定されている場合）
+        transform_list = [
+            transforms.LoadImaged(keys=["image", "label"]),
+            transforms.EnsureChannelFirstd(keys=["image", "label"]),
+            transforms.Orientationd(keys=["image", "label"], axcodes="RAS"),
+            transforms.Spacingd(
+                keys=["image", "label"],
+                pixdim=(1.5, 1.5, 2.0),
+                mode=("bilinear", "nearest")
+            ),
+            transforms.ScaleIntensityRanged(
+                keys=["image"],
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True
+            ),
+            transforms.CropForegroundd(keys=["image", "label"], source_key="image", allow_smaller=True),
+        ]
+
+        # 継続学習用のラベルマッピングを追加
+        if self.organ_list is not None:
+            orig_labels, target_labels = generate_fixed_label_for_continual_learning(
+                task_organ_ids=self.organ_list,
+                total_organs=15,  # AMOS22は15臓器
+                is_multi_label=True
+            )
+            if self.task_id == 0:  # 最初のタスクのみ表示
+                print(f"\nTask {self.task_id} Label Mapping:")
+                print_label_mapping(orig_labels, target_labels)
+
+            transform_list.append(
+                transforms.MapLabelValued(
+                    keys=["label"],
+                    orig_labels=orig_labels,
+                    target_labels=target_labels,
+                )
+            )
+
         if self.mode == 'train':
             # Training transforms with augmentation
-            transform = transforms.Compose([
-                transforms.LoadImaged(keys=["image", "label"]),
-                transforms.EnsureChannelFirstd(keys=["image", "label"]),
-                transforms.Orientationd(keys=["image", "label"], axcodes="RAS"),
-                transforms.Spacingd(
-                    keys=["image", "label"],
-                    pixdim=(1.5, 1.5, 2.0),
-                    mode=("bilinear", "nearest")
-                ),
-                transforms.ScaleIntensityRanged(
-                    keys=["image"],
-                    a_min=-175,
-                    a_max=250,
-                    b_min=0.0,
-                    b_max=1.0,
-                    clip=True
-                ),
-                transforms.CropForegroundd(keys=["image", "label"], source_key="image"),
+            transform_list.extend([
                 transforms.RandCropByPosNegLabeld(
                     keys=["image", "label"],
                     label_key="label",
@@ -134,6 +161,7 @@ class MedicalSegmentationDataset(Dataset):
                     image_key="image",
                     image_threshold=0,
                 ),
+                transforms.SpatialPadd(keys=["image", "label"], spatial_size=self.roi_size),
                 transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
                 transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
                 transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
@@ -144,28 +172,9 @@ class MedicalSegmentationDataset(Dataset):
             ])
         else:
             # Validation/test transforms (no augmentation)
-            transform = transforms.Compose([
-                transforms.LoadImaged(keys=["image", "label"]),
-                transforms.EnsureChannelFirstd(keys=["image", "label"]),
-                transforms.Orientationd(keys=["image", "label"], axcodes="RAS"),
-                transforms.Spacingd(
-                    keys=["image", "label"],
-                    pixdim=(1.5, 1.5, 2.0),
-                    mode=("bilinear", "nearest")
-                ),
-                transforms.ScaleIntensityRanged(
-                    keys=["image"],
-                    a_min=-175,
-                    a_max=250,
-                    b_min=0.0,
-                    b_max=1.0,
-                    clip=True
-                ),
-                transforms.CropForegroundd(keys=["image", "label"], source_key="image"),
-                transforms.ToTensord(keys=["image", "label"]),
-            ])
+            transform_list.append(transforms.ToTensord(keys=["image", "label"]))
 
-        return transform
+        return transforms.Compose(transform_list)
 
     def __len__(self):
         return len(self.data_list)
@@ -173,20 +182,12 @@ class MedicalSegmentationDataset(Dataset):
     def __getitem__(self, idx):
         data = self.data_list[idx]
 
-        # Apply transforms
+        # Apply transforms (including MapLabelValued)
         if self.transform is not None:
             data = self.transform(data)
             # Handle case where transform returns a list
             if isinstance(data, list):
                 data = data[0]
-
-        # Filter labels for current task if specified
-        if self.task_id is not None and self.organ_list is not None:
-            label = data['label']
-            mask = torch.zeros_like(label)
-            for organ_id in self.organ_list:
-                mask[label == organ_id] = organ_id
-            data['label'] = mask
 
         # Add task_id to data
         if self.task_id is not None:
@@ -247,7 +248,7 @@ def build_continual_medical_dataloader(
     return dataloader
 
 
-def create_task_split_for_organs(num_tasks=4, total_organs=13):
+def create_task_split_for_organs(num_tasks=4, total_organs=15):
     """
     Create task splits for continual learning on multi-organ segmentation
     Each task is assigned one organ
@@ -255,6 +256,7 @@ def create_task_split_for_organs(num_tasks=4, total_organs=13):
     Args:
         num_tasks: Number of tasks
         total_organs: Total number of organ classes (excluding background)
+                     Default is 15 for AMOS22
 
     Returns:
         List of organ lists for each task

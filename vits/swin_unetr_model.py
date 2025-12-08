@@ -79,6 +79,49 @@ class SwinUNETRWrapper(nn.Module):
         logits = self.swin_unetr(x)
         return logits, {}
 
+    def expand_output_layer(self, new_out_channels):
+        """
+        Expand output layer for class-incremental learning
+
+        Args:
+            new_out_channels: New number of output channels
+        """
+        if new_out_channels <= self.out_channels:
+            _logger.info(f"Output channels already {self.out_channels}, no expansion needed")
+            return
+
+        _logger.info(f"Expanding output layer from {self.out_channels} to {new_out_channels} channels")
+
+        # Get the current output layer
+        old_out_layer = self.swin_unetr.out
+        old_weight = old_out_layer.conv.conv.weight.data
+        old_bias = old_out_layer.conv.conv.bias.data if old_out_layer.conv.conv.bias is not None else None
+
+        # Create new output layer with more channels
+        from monai.networks.blocks import UnetOutBlock
+        new_out_layer = UnetOutBlock(
+            spatial_dims=self.spatial_dims,
+            in_channels=self.feature_size,
+            out_channels=new_out_channels,
+        )
+
+        # Initialize new layer
+        # Copy old weights for existing channels
+        with torch.no_grad():
+            new_out_layer.conv.conv.weight[:self.out_channels] = old_weight
+            if old_bias is not None:
+                new_out_layer.conv.conv.bias[:self.out_channels] = old_bias
+            # Initialize new channels with small random values
+            nn.init.kaiming_normal_(new_out_layer.conv.conv.weight[self.out_channels:], mode='fan_out')
+            if new_out_layer.conv.conv.bias is not None:
+                nn.init.constant_(new_out_layer.conv.conv.bias[self.out_channels:], 0)
+
+        # Replace output layer
+        self.swin_unetr.out = new_out_layer
+        self.out_channels = new_out_channels
+
+        _logger.info(f"Output layer expanded successfully")
+
     def load_pretrained(self, checkpoint_path):
         """Load pretrained weights"""
         checkpoint = torch.load(checkpoint_path, map_location='cpu')

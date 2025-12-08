@@ -248,25 +248,36 @@ def build_continual_medical_dataloader(
     return dataloader
 
 
-def create_task_split_for_organs(num_tasks=4, total_organs=15):
+def create_task_split_for_organs(num_tasks=4, total_organs=15, cumulative=True):
     """
     Create task splits for continual learning on multi-organ segmentation
-    Each task is assigned one organ
 
     Args:
         num_tasks: Number of tasks
         total_organs: Total number of organ classes (excluding background)
                      Default is 15 for AMOS22
+        cumulative: If True, each task includes all organs from previous tasks
+                   If False, each task only includes new organ
 
     Returns:
         List of organ lists for each task
     """
     task_splits = []
-    for i in range(num_tasks):
-        organ_id = i + 1
-        if organ_id <= total_organs:
-            task_splits.append([organ_id])
-        else:
-            task_splits.append([])
+
+    if cumulative:
+        # 累積学習: 各タスクは過去の臓器も含む
+        # Task 0: [1], Task 1: [1,2], Task 2: [1,2,3], Task 3: [1,2,3,4]
+        for i in range(num_tasks):
+            organs = list(range(1, min(i + 2, total_organs + 1)))  # 1からi+1まで
+            task_splits.append(organs)
+    else:
+        # 非累積学習: 各タスクは新しい臓器のみ
+        # Task 0: [1], Task 1: [2], Task 2: [3], Task 3: [4]
+        for i in range(num_tasks):
+            organ_id = i + 1
+            if organ_id <= total_organs:
+                task_splits.append([organ_id])
+            else:
+                task_splits.append([])
 
     return task_splits

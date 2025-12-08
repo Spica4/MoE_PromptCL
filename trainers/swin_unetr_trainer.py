@@ -32,17 +32,19 @@ def train(args):
     """
     device = torch.device(args.device)
 
-    # Create task splits for continual learning
-    total_organs = args.out_channels - 1  # Exclude background
+    # Create task splits for continual learning (cumulative)
+    total_organs = 15  # AMOS22の全臓器数
 
     task_organ_lists = create_task_split_for_organs(
         num_tasks=args.num_tasks,
-        total_organs=total_organs
+        total_organs=total_organs,
+        cumulative=True  # 累積学習モード
     )
 
-    print(f"Continual learning task splits:")
+    print(f"Continual learning task splits (cumulative):")
     for i, organs in enumerate(task_organ_lists):
-        print(f"  Task {i}: Organs {organs}")
+        num_classes = len(organs) + 1  # organs + background
+        print(f"  Task {i}: Organs {organs} -> {num_classes} classes (background + {len(organs)} organs)")
 
     # Build data loaders for all tasks
     data_loaders = []
@@ -78,9 +80,16 @@ def train(args):
 
     print(f"Data loaders created for {args.num_tasks} tasks")
 
-    # Create model
-    print(f"Creating Swin UNETR model")
+    # Create model with initial output channels for Task 0
+    initial_out_channels = len(task_organ_lists[0]) + 1  # background + first organ
+    print(f"Creating Swin UNETR model with initial {initial_out_channels} output channels")
+
+    # Temporarily override out_channels for model creation
+    original_out_channels = args.out_channels
+    args.out_channels = initial_out_channels
     model = create_swin_unetr_model(args)
+    args.out_channels = original_out_channels  # Restore original value
+
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -103,6 +112,17 @@ def train(args):
         print(f"\n{'=' * 80}")
         print(f"Training Task {task_id}: Organs {task_organ_lists[task_id]}")
         print(f"{'=' * 80}\n")
+
+        # Expand model output layer if needed (for tasks after Task 0)
+        if task_id > 0:
+            new_out_channels = len(task_organ_lists[task_id]) + 1  # background + current organs
+            current_out_channels = model.out_channels
+            if new_out_channels > current_out_channels:
+                print(f"Expanding model from {current_out_channels} to {new_out_channels} output channels")
+                model.expand_output_layer(new_out_channels)
+                # Move model back to device after expansion
+                model.to(device)
+                print(f"Model expansion complete")
 
         train_loader = data_loaders[task_id]['train']
         val_loader = data_loaders[task_id]['val']

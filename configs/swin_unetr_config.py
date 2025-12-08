@@ -34,6 +34,18 @@ def get_args_parser(subparsers):
     subparsers.add_argument('--spatial_dims', default=3, type=int,
                             help='Spatial dimensions (3 for 3D)')
 
+    # MoE (Mixture of Experts) parameters
+    subparsers.add_argument('--use_moe', action='store_true',
+                            help='Use Mixture of Experts')
+    subparsers.add_argument('--num_experts_per_task', default=4, type=int,
+                            help='Number of experts per task for MoE')
+    subparsers.add_argument('--prompt_length', default=5, type=int,
+                            help='Length of expert prompts')
+    subparsers.add_argument('--use_nonlinear_gate', action='store_true', default=True,
+                            help='Use non-linear gating in MoE')
+    subparsers.add_argument('--use_residual_gate', action='store_true', default=True,
+                            help='Use residual connection in MoE gating (NoRGa)')
+
     # Training parameters
     subparsers.add_argument('--batch-size', default=2, type=int,
                             help='Batch size per GPU')

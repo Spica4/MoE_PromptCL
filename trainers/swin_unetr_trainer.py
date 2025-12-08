@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 from vits.swin_unetr_model import create_swin_unetr_model
+from vits.moe_swin_unetr import create_moe_swin_unetr_model
 from continual_datasets.medical_segmentation import (
     build_continual_medical_dataloader,
     create_task_split_for_organs,
@@ -82,12 +83,25 @@ def train(args):
 
     # Create model with initial output channels for Task 0
     initial_out_channels = len(task_organ_lists[0]) + 1  # background + first organ
-    print(f"Creating Swin UNETR model with initial {initial_out_channels} output channels")
+
+    # Check if using MoE
+    use_moe = getattr(args, 'use_moe', False)
+    if use_moe:
+        print(f"Creating MoE Swin UNETR model with {args.num_experts_per_task} experts/task")
+        print(f"  - Initial output channels: {initial_out_channels}")
+        print(f"  - NoRGa gating: nonlinear={args.use_nonlinear_gate}, residual={args.use_residual_gate}")
+    else:
+        print(f"Creating standard Swin UNETR model with initial {initial_out_channels} output channels")
 
     # Temporarily override out_channels for model creation
     original_out_channels = args.out_channels
     args.out_channels = initial_out_channels
-    model = create_swin_unetr_model(args)
+
+    if use_moe:
+        model = create_moe_swin_unetr_model(args)
+    else:
+        model = create_swin_unetr_model(args)
+
     args.out_channels = original_out_channels  # Restore original value
 
     model.to(device)
